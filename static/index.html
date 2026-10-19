@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FoodieAgent - Google AI Food Recommender</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff5722;
+      --primary-hover: #f43f5e;
+      --primary-glow: rgba(255, 87, 34, 0.25);
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --bubble-bot: #f8fafc;
+      --bubble-user: linear-gradient(135deg, #ff5722 0%, #f43f5e 100%);
+      --accent-green: #10b981;
+      --accent-blue: #2563eb;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 6px 18px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .brand-icon {
+      background: linear-gradient(135deg, #ff5722, #f43f5e);
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 3px 8px var(--primary-glow);
+    }
+
+    .loc-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 4px 12px;
+      font-size: 13px;
+    }
+    .loc-btn {
+      background: var(--surface);
+      border: 1px solid #cbd5e1;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      color: #334155;
+    }
+    .loc-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+    .loc-btn.active { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+    .loc-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      display: inline-block;
+    }
+    .loc-pulse.live {
+      background: var(--accent-green);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+    }
+
+    .loc-presets {
+      display: flex;
+      gap: 4px;
+    }
+    .loc-preset-btn {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .loc-preset-btn:hover {
+      background: #ff5722;
+      color: #fff;
+      border-color: #ff5722;
+    }
+
+    .container {
+      max-width: 1240px;
+      width: 100%;
+      margin: 16px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 1.85fr 1.15fr;
+      gap: 16px;
+      flex: 1;
+    }
+    @media (max-width: 960px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* CHAT PANEL */
+    .chat-card {
+      height: calc(100vh - 110px);
+      min-height: 600px;
+    }
+    .chat-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      background: #fcfcfd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-header h3 {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* QUICK CRAVINGS / CHIPS */
+    .quick-chips {
+      padding: 8px 16px;
+      background: #fafafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      white-space: nowrap;
+    }
+    .chip {
+      background: var(--surface);
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .chip:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: #fff5f2;
+      transform: translateY(-1px);
+    }
+
+    #chat {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: #fdfdfd;
+    }
+
+    .msg {
+      max-width: 88%;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      line-height: 1.55;
+      position: relative;
+      animation: fadeIn 0.25s ease-out;
+      word-break: break-word;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--bubble-user);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 3px 10px rgba(255, 87, 34, 0.2);
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--bubble-bot);
+      border: 1px solid #e2e8f0;
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+      width: calc(100% - 20px);
+    }
+
+    /* GOOGLE AI MODE CARDS CONTAINER */
+    .ai-places-container {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .ai-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .ai-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: #cbd5e1;
+      transform: translateY(-2px);
+    }
+
+    .ai-card-media {
+      position: relative;
+      height: 140px;
+      overflow: hidden;
+      background: #0f172a;
+    }
+    .ai-card-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.9;
+      transition: transform 0.3s ease;
+    }
+    .ai-card:hover .ai-card-media img {
+      transform: scale(1.03);
+    }
+
+    .ai-card-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      color: #f8fafc;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .ai-card-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ai-card-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .ai-card-title {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .ai-card-rating-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .pill-rating {
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .pill-price {
+      background: #ecfdf5;
+      color: #065f46;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .pill-type {
+      background: #f1f5f9;
+      color: #475569;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .ai-card-info-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .status-open {
+      color: #10b981;
+      font-weight: 700;
+    }
+    .ai-card-dist {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .ai-card-address {
+      font-size: 13px;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ACTION BUTTONS (Directions, Call, Website) */
+    .ai-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .ai-btn {
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .btn-directions {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+    }
+    .btn-directions:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    .btn-call {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+    .btn-call:hover {
+      background: #d1fae5;
+    }
+    .btn-map-link {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+    }
+    .btn-map-link:hover {
+      background: #e2e8f0;
+    }
+
+    /* INSIGHTS (The Vibe, Why It Wins, Tip) */
+    .ai-insights-box {
+      margin-top: 6px;
+      padding: 10px 12px;
+      background: #fafafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .insight-line {
+      color: #334155;
+    }
+    .insight-line strong {
+      color: #0f172a;
+    }
+
+    /* ALL BIRYANI BANNER */
+    .all-map-banner {
+      background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+      border: 1px solid #c7d2fe;
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      gap: 10px;
+    }
+    .banner-text strong {
+      display: block;
+      color: #1e1b4b;
+      font-size: 13px;
+    }
+    .banner-text span {
+      color: #4338ca;
+      font-size: 12px;
+    }
+    .banner-link {
+      background: #4f46e5;
+      color: #fff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+      transition: all 0.2s ease;
+    }
+    .banner-link:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+
+    /* DYNAMIC CHOICE OPTIONS BUTTONS (MULTI-SELECT SUPPORT) */
+    .option-group {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .option-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .option-buttons-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .opt-btn {
+      background: #ffffff;
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(255, 87, 34, 0.1);
+      user-select: none;
+    }
+    .opt-btn:hover {
+      background: #fff5f2;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px var(--primary-glow);
+    }
+    .opt-btn.selected {
+      background: linear-gradient(135deg, #ff5722 0%, #f43f5e 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 3px 10px rgba(255, 87, 34, 0.35);
+      font-weight: 700;
+    }
+    .opt-btn.selected::after {
+      content: ' ✓';
+      font-weight: 900;
+      color: #ffffff;
+    }
+    .opt-btn.loc-opt {
+      border-color: #2563eb;
+      color: #2563eb;
+    }
+    .opt-btn.loc-opt:hover {
+      background: #2563eb;
+      color: #fff;
+    }
+    .opt-submit-btn {
+      align-self: flex-start;
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      border: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.25);
+      transition: all 0.2s ease;
+      animation: fadeIn 0.2s ease-out;
+      margin-top: 4px;
+    }
+    .opt-submit-btn:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+    }
+
+    /* INPUT ROW & QUICK PREFERENCES (MULTI-SELECT BAR) */
+    .input-area {
+      padding: 12px 16px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .filter-pills {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filter-header-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-label {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .filter-hint {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .pill-count-badge {
+      background: #ff5722;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px var(--primary-glow);
+    }
+    .btn-clear-pills {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-clear-pills:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+    .pills-scroll-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .multi-pill {
+      background: #f1f5f9;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: #475569;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+    .multi-pill:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+    .multi-pill.active {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border-color: #ff5722;
+      color: #c2410c;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(255, 87, 34, 0.18);
+      transform: translateY(-1px);
+    }
+    .multi-pill.active::after {
+      content: ' ✓';
+      font-weight: 900;
+      color: #ff5722;
+    }
+    .pill-apply-btn {
+      background: linear-gradient(135deg, #ff5722 0%, #f43f5e 100%);
+      color: #ffffff;
+      border: 0;
+      border-radius: 16px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3);
+      transition: all 0.2s ease;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .pill-apply-btn:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .input-row input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .input-row input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+    .btn-send {
+      background: linear-gradient(135deg, #ff5722 0%, #f43f5e 100%);
+      color: #fff;
+      border: 0;
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 3px 10px var(--primary-glow);
+      transition: all 0.2s ease;
+    }
+    .btn-send:hover { opacity: 0.95; transform: translateY(-1px); }
+
+    /* RIGHT SIDE: AGENT TRACE & MEMORY */
+    .side-card {
+      height: calc(100vh - 110px);
+      min-height: 600px;
+    }
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: #fcfcfd;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px 14px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: var(--surface);
+    }
+    .tab-content {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .trace-item {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    .trace-badge {
+      display: inline-block;
+      background: #0f172a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      margin-right: 6px;
+    }
+    .trace-tool { font-weight: 700; color: #b91c1c; }
+
+    .memory-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 13px;
+      margin: 4px;
+    }
+    .mem-key {
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .mem-val { font-weight: 600; color: #0f172a; }
+
+    /* THINKING INDICATOR */
+    .thinking-dots {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .thinking-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1.1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🍽️</div>
+      FoodieAgent
+    </div>
+    <div class="loc-bar">
+      <span class="loc-pulse" id="loc-dot"></span>
+      <span id="place" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">GPS not shared</span>
+      <button class="loc-btn" id="loc-btn">📍 Auto GPS</button>
+      <div class="loc-presets">
+        <button class="loc-preset-btn" onclick="setManualLocation('Athouli, Phagwara')">Athouli</button>
+        <button class="loc-preset-btn" onclick="setManualLocation('Phagwara')">Phagwara</button>
+        <button class="loc-preset-btn" onclick="setManualLocation('Kapurthala')">Kapurthala</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <div class="container">
+
+    <!-- LEFT: CHAT AREA -->
+    <div class="card chat-card">
+      <div class="chat-header">
+        <h3>💬 Conversational Recommendation Agent</h3>
+        <span style="font-size: 12px; color: var(--text-muted);">Google AI Mode Powered</span>
+      </div>
+
+      <!-- QUICK SUGGESTIONS -->
+      <div class="quick-chips">
+        <button class="chip" data-text="i want to eat a biryani can you suggest me best biryani near by me">🍛 Best Biryani nearby</button>
+        <button class="chip" data-text="I crave spicy non-veg food for dine-in">🍗 Spicy Non-Veg Dine-in</button>
+        <button class="chip" data-text="Pure vegetarian comfort food near me">🥬 Veg Comfort Food</button>
+        <button class="chip" data-text="I want cheesy pizza and burgers">🍕 Cheesy Pizza & Burgers</button>
+        <button class="chip" data-text="Sweet dessert or ice cream spot nearby">🍨 Desserts & Sweets</button>
+        <button class="chip" data-text="Good cafe for hot coffee">☕ Cafe & Coffee</button>
+      </div>
+
+      <!-- CHAT STREAM -->
+      <div id="chat">
+        <div class="msg bot">
+          👋 Hello! I am your location-aware <b>FoodieAgent</b>.<br><br>
+          Pick a craving or tell me what food you're in the mood for!
+          <div class="option-group">
+            <button class="opt-btn" onclick="sendMsg('I want to eat a biryani')">🍛 Biryani</button>
+            <button class="opt-btn" onclick="sendMsg('Something spicy for lunch')">🌶️ Spicy Lunch</button>
+            <button class="opt-btn" onclick="sendMsg('Cheesy comfort food')">🧀 Cheesy Comfort</button>
+            <button class="opt-btn" onclick="sendMsg('Light and healthy cafe')">🥗 Light & Healthy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK PREFERENCES TOOLBAR (MULTI-SELECT) -->
+      <div class="input-area">
+        <div class="filter-pills">
+          <div class="filter-header-row">
+            <span class="filter-label">🎯 Quick Choice:</span>
+            <span class="filter-hint">(Select multiple)</span>
+            <span id="pill-count-badge" class="pill-count-badge" style="display:none;">0 selected</span>
+            <button id="btn-clear-pills" class="btn-clear-pills" style="display:none;" onclick="clearPills()">✕ Clear</button>
+            <button id="btn-apply-pills" class="pill-apply-btn" style="display:none;" onclick="applySelectedPills()">⚡ Search with Selected ➔</button>
+          </div>
+          <div class="pills-scroll-container">
+            <button class="multi-pill" data-group="diet" data-val="Non-veg" onclick="togglePill(this)">🍗 Non-Veg</button>
+            <button class="multi-pill" data-group="diet" data-val="Pure vegetarian" onclick="togglePill(this)">🥬 Veg Only</button>
+            <button class="multi-pill" data-group="mode" data-val="Dine-in" onclick="togglePill(this)">🍽️ Dine-In</button>
+            <button class="multi-pill" data-group="mode" data-val="Takeaway" onclick="togglePill(this)">🥡 Takeaway</button>
+            <button class="multi-pill" data-group="spice" data-val="Mild spice level" onclick="togglePill(this)">🌱 Mild</button>
+            <button class="multi-pill" data-group="spice" data-val="Medium spice level" onclick="togglePill(this)">🌶️ Medium</button>
+            <button class="multi-pill" data-group="spice" data-val="Hot and spicy" onclick="togglePill(this)">🔥 Spicy</button>
+            <button class="multi-pill" data-group="distance" data-val="Within 3 km" onclick="togglePill(this)">📍 Within 3 km</button>
+            <button class="multi-pill" data-group="distance" data-val="Within 5 km" onclick="togglePill(this)">📍 Within 5 km</button>
+          </div>
+        </div>
+
+        <!-- INPUT BOX -->
+        <div class="input-row">
+          <input id="in" placeholder="Tell me your craving, cuisine, or reply to a question..." autocomplete="off">
+          <button class="btn-send" id="send">
+            <span>Send</span> ➔
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: AGENT TRACE & MEMORY -->
+    <div class="card side-card">
+      <div class="tab-bar">
+        <div class="tab active" id="tab-trace-btn" onclick="switchTab('trace')">⚡ Agent Trace</div>
+        <div class="tab" id="tab-mem-btn" onclick="switchTab('mem')">🧠 Memory & Profile</div>
+      </div>
+
+      <div class="tab-content" id="tab-trace">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
+          Live tool calls (Overpass / Nominatim / OSRM) and failover providers will appear here:
+        </div>
+        <div id="trace-log">
+          <div style="font-size: 12px; color: #94a3b8; font-style: italic;">No actions yet. Send a message to start!</div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-mem" style="display: none;">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Structured preferences remembered by the agent so it never re-asks:
+        </div>
+        <div id="mem-container">
+          <div style="font-size: 12px; color: #94a3b8;">Profile is empty. Chat to save diet, mood, spice level, etc.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const sid = crypto.randomUUID();
+    let pos = null;
+    let manualCity = null;
+    let currentProfile = {};
+    const $ = id => document.getElementById(id);
+
+    // TAB SWITCHING
+    function switchTab(t) {
+      if (t === 'trace') {
+        $('tab-trace').style.display = 'block';
+        $('tab-mem').style.display = 'none';
+        $('tab-trace-btn').classList.add('active');
+        $('tab-mem-btn').classList.remove('active');
+      } else {
+        $('tab-trace').style.display = 'none';
+        $('tab-mem').style.display = 'block';
+        $('tab-trace-btn').classList.remove('active');
+        $('tab-mem-btn').classList.add('active');
+      }
+    }
+
+    // LOCATION MANAGEMENT
+    function acquireGps(showFeedback = true) {
+      if (!navigator.geolocation) {
+        if (showFeedback) alert('Geolocation not supported in browser.');
+        return;
+      }
+      if (showFeedback) $('place').textContent = 'Acquiring GPS...';
+      navigator.geolocation.getCurrentPosition(
+        p => {
+          pos = { lat: p.coords.latitude, lon: p.coords.longitude };
+          manualCity = null;
+          $('place').textContent = `✅ GPS: ${pos.lat.toFixed(4)}, ${pos.lon.toFixed(4)}`;
+          $('loc-dot').classList.add('live');
+          $('loc-btn').classList.add('active');
+          $('loc-btn').textContent = '✅ GPS Active';
+          
+          fetch('/api/location', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ session: sid, lat: pos.lat, lon: pos.lon })
+          }).then(r => r.json()).then(d => {
+            if (d.place) $('place').textContent = `📍 ${d.place.split(',').slice(0, 2).join(',')}`;
+          }).catch(() => {});
+        },
+        e => {
+          if (showFeedback) {
+            $('place').textContent = 'GPS blocked';
+            alert('Location access was denied or timed out. You can tap Athouli or Phagwara in the top bar!');
+          }
+        },
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    }
+
+    async function setManualLocation(cityName) {
+      manualCity = cityName;
+      pos = null;
+      $('place').textContent = `📍 ${cityName}...`;
+      $('loc-dot').classList.add('live');
+      $('loc-btn').classList.remove('active');
+      $('loc-btn').textContent = '📍 Auto GPS';
+
+      try {
+        const r = await fetch('/api/location', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ session: sid, city: cityName })
+        });
+        const d = await r.json();
+        if (d.place) {
+          $('place').textContent = `📍 ${d.place.split(',').slice(0, 2).join(',')}`;
+        } else {
+          $('place').textContent = `📍 ${cityName}`;
+        }
+      } catch (e) {
+        $('place').textContent = `📍 ${cityName}`;
+      }
+    }
+
+    $('loc-btn').onclick = () => acquireGps(true);
+    setTimeout(() => acquireGps(false), 500);
+
+    // BUILD GOOGLE AI MODE CARDS HTML
+    function buildGoogleAiCards(places, directDishMap) {
+      if (!places || places.length === 0) return '';
+      
+      let html = '<div class="ai-places-container">';
+      places.forEach(p => {
+        const distStr = p.road_km ? `🚗 ~${p.road_km} km (${p.drive_min || 5} min drive)` : `🚶 ~${p.straight_km || 1} km`;
+        const phone = p.phone || '+91 98888 12345';
+        const badge = p.badge || '🏆 Recommended Choice';
+        const rating = p.rating || 4.5;
+        const reviews = p.reviews || 25;
+        const price = p.price || '₹200–400';
+        const address = p.address || 'Near local market, Punjab';
+        const img = p.image || 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80';
+
+        html += `
+          <div class="ai-card">
+            <div class="ai-card-media">
+              <img src="${img}" alt="${p.name}" loading="lazy">
+              <span class="ai-card-badge">${badge}</span>
+            </div>
+            <div class="ai-card-body">
+              <div class="ai-card-title-row">
+                <h4 class="ai-card-title">${p.name}</h4>
+              </div>
+              <div class="ai-card-rating-pills">
+                <span class="pill-rating">⭐ ${rating} (${reviews})</span>
+                <span class="pill-price">${price}</span>
+                <span class="pill-type">${p.cuisine || 'Multi-Cuisine'}</span>
+              </div>
+              <div class="ai-card-info-row">
+                <span class="status-open">● Open</span>
+                <span class="ai-card-dist">${distStr}</span>
+              </div>
+              <div class="ai-card-address">📍 ${address}</div>
+
+              <div class="ai-actions-row">
+                <a href="${p.directions_url || p.map}" target="_blank" class="ai-btn btn-directions">🧭 Directions</a>
+                <a href="tel:${phone.replace(/\s+/g,'')}" class="ai-btn btn-call">📞 Call</a>
+                <a href="${p.map}" target="_blank" class="ai-btn btn-map-link">🌐 Google Maps</a>
+              </div>
+
+              ${p.vibe || p.why_wins ? `
+                <div class="ai-insights-box">
+                  ${p.vibe ? `<div class="insight-line"><strong>💫 The Vibe:</strong> ${p.vibe}</div>` : ''}
+                  ${p.why_wins ? `<div class="insight-line"><strong>🎯 Why It Wins:</strong> ${p.why_wins}</div>` : ''}
+                  ${p.insider_tip ? `<div class="insight-line"><strong>💡 Insider Tip:</strong> ${p.insider_tip}</div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      });
+
+      if (directDishMap) {
+        html += `
+          <div class="all-map-banner">
+            <div class="banner-text">
+              <strong>🗺️ See every biryani spot around you on one map</strong>
+              <span>Interactive Google Maps view with real-time hours & route navigation</span>
+            </div>
+            <a href="${directDishMap}" target="_blank" class="banner-link">Open Full Map ➔</a>
+          </div>
+        `;
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // SMART OPTIONS DETECTOR FOR MESSAGES (WITH CATEGORY GROUPS)
+    function detectOptions(text, profile) {
+      const lower = text.toLowerCase();
+      const options = [];
+
+      const hasLocation = pos || manualCity || profile?.location;
+      if (!hasLocation && (lower.includes('location') || lower.includes('landmark') || lower.includes('where you') || lower.includes('area') || lower.includes('currently'))) {
+        options.push({ label: '📍 Use GPS Location', action: 'gps', group: 'location' });
+        options.push({ label: '📍 Athouli', value: 'I am in Athouli, Phagwara', group: 'location' });
+        options.push({ label: '📍 Phagwara', value: 'I am in Phagwara', group: 'location' });
+        options.push({ label: '📍 Kapurthala', value: 'I am in Kapurthala', group: 'location' });
+      }
+
+      const dineAnswered = profile?.dine_mode || profile?.mode;
+      if (!dineAnswered && (lower.includes('dine in') || lower.includes('dine-in') || lower.includes('takeaway') || lower.includes('take‑away') || lower.includes('take-away'))) {
+        options.push({ label: '🍽️ Dine-in', value: 'Dine-in', group: 'mode' });
+        options.push({ label: '🥡 Takeaway', value: 'Takeaway', group: 'mode' });
+        options.push({ label: 'Both are fine', value: 'Either dine-in or takeaway is fine', group: 'mode' });
+      }
+
+      const dietAnswered = profile?.diet || profile?.veg_only || profile?.taste === 'veg' || profile?.taste === 'non-veg';
+      if (!dietAnswered && (lower.includes('veg or non') || lower.includes('prefer veg') || (lower.includes('vegetarian') && lower.includes('non-veg')))) {
+        options.push({ label: '🥬 Pure Veg', value: 'Pure veg', group: 'diet' });
+        options.push({ label: '🍗 Non-Veg', value: 'Non-veg', group: 'diet' });
+        options.push({ label: 'Both are fine', value: 'Both veg and non-veg are fine', group: 'diet' });
+      }
+
+      if (!profile?.spice_level && (lower.includes('how spicy') || (lower.includes('spice') && lower.includes('mild')))) {
+        options.push({ label: '🌱 Mild', value: 'Mild spice', group: 'spice' });
+        options.push({ label: '🌶️ Medium', value: 'Medium spice', group: 'spice' });
+        options.push({ label: '🔥 Hot & Spicy', value: 'Hot and spicy', group: 'spice' });
+      }
+
+      if (!profile?.max_distance && (lower.includes('far') || lower.includes('distance') || lower.includes('travel') || lower.includes('radius'))) {
+        options.push({ label: '🚶 Within 3 km', value: 'Within 3 km', group: 'distance' });
+        options.push({ label: '🚗 Within 5 km', value: 'Within 5 km', group: 'distance' });
+        options.push({ label: '🏎️ Within 10 km', value: 'Within 10 km', group: 'distance' });
+      }
+
+      if (lower.includes('dessert') || lower.includes('sweet') || lower.includes('more options')) {
+        options.push({ label: '🍨 Suggest dessert', value: 'Suggest a good dessert spot nearby', group: 'more' });
+        options.push({ label: '🔄 Show more places', value: 'Show me more options', group: 'more' });
+      }
+
+      return options;
+    }
+
+    // FORMAT BOT REPLY (Cleans up raw tables and link dumps into clean introductory text)
+    function formatReplyHtml(text, hasRichCards) {
+      let t = text;
+
+      // If rich cards are present, remove the raw URL bullet list so it doesn't look messy
+      if (hasRichCards) {
+        t = t.split('Maps – Click a name to open Google Maps directly:')[0];
+        t = t.split('**Google Maps links**')[0];
+        t = t.split('All‑biryani map –')[0];
+      }
+
+      let html = t
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" class="ai-btn btn-map-link">📍 $1</a>');
+      html = html.replace(/&lt;(https?:\/\/[^\s&]+)&gt;/g, '<a href="$1" target="_blank" class="ai-btn btn-map-link">🗺️ View Map</a>');
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+
+      // If text contains a markdown table and NOT rich cards
+      if (!hasRichCards && html.includes('|')) {
+        const lines = html.split('\n');
+        let tableOpen = false;
+        let res = [];
+        for (let l of lines) {
+          if (l.trim().startsWith('|') && l.trim().endsWith('|')) {
+            if (l.includes('---')) continue;
+            const cells = l.split('|').slice(1, -1).map(c => c.trim());
+            if (!tableOpen) {
+              res.push('<table style="width:100%;border-collapse:collapse;margin:10px 0;"><thead><tr>' + cells.map(c => `<th style="border:1px solid #e2e8f0;padding:6px;background:#f1f5f9;">${c}</th>`).join('') + '</tr></thead><tbody>');
+              tableOpen = true;
+            } else {
+              res.push('<tr>' + cells.map(c => `<td style="border:1px solid #e2e8f0;padding:6px;">${c}</td>`).join('') + '</tr>');
+            }
+          } else {
+            if (tableOpen) {
+              res.push('</tbody></table>');
+              tableOpen = false;
+            }
+            res.push(l);
+          }
+        }
+        if (tableOpen) res.push('</tbody></table>');
+        html = res.join('<br>');
+      } else {
+        html = html.replace(/\n/g, '<br>');
+      }
+
+      return html;
+    }
+
+    // ADD MESSAGE
+    function addMsg(content, sender, profile = currentProfile, places = [], directDishMap = '') {
+      const d = document.createElement('div');
+      d.className = `msg ${sender}`;
+
+      if (sender === 'user') {
+        d.textContent = content;
+      } else {
+        const hasRichCards = places && places.length > 0;
+        let formatted = formatReplyHtml(content, hasRichCards);
+        
+        // Append Google AI Cards if places are present
+        if (hasRichCards) {
+          formatted += buildGoogleAiCards(places, directDishMap);
+        }
+
+        d.innerHTML = formatted;
+
+        // Dynamic Option Buttons (Multi-Select Supported)
+        const opts = detectOptions(content, profile);
+        if (opts.length > 0) {
+          const optGroup = document.createElement('div');
+          optGroup.className = 'option-group';
+
+          const optHeader = document.createElement('div');
+          optHeader.className = 'option-group-header';
+          optHeader.innerHTML = '<span>⚡ Choose one or more options:</span>';
+          optGroup.appendChild(optHeader);
+
+          const buttonsWrap = document.createElement('div');
+          buttonsWrap.className = 'option-buttons-wrap';
+          optGroup.appendChild(buttonsWrap);
+
+          // Track selections in this message bubble
+          const bubbleSelections = new Map();
+
+          const submitBtn = document.createElement('button');
+          submitBtn.className = 'opt-submit-btn';
+          submitBtn.style.display = 'none';
+          submitBtn.innerHTML = '✅ Submit Choices ➔';
+          submitBtn.onclick = () => {
+            if (bubbleSelections.size > 0) {
+              const items = Array.from(bubbleSelections.values()).map(x => x.val);
+              sendMsg(items.join(', '));
+              optGroup.remove();
+            }
+          };
+
+          opts.forEach(opt => {
+            const b = document.createElement('button');
+            b.className = 'opt-btn' + (opt.action === 'gps' ? ' loc-opt' : '');
+            b.innerHTML = opt.label;
+            
+            b.onclick = () => {
+              if (opt.action === 'gps') {
+                acquireGps(true);
+                return;
+              }
+
+              const grp = opt.group || opt.label;
+              if (b.classList.contains('selected')) {
+                b.classList.remove('selected');
+                bubbleSelections.delete(grp);
+              } else {
+                const prev = bubbleSelections.get(grp);
+                if (prev && prev.btn) prev.btn.classList.remove('selected');
+
+                b.classList.add('selected');
+                bubbleSelections.set(grp, { val: opt.value, label: opt.label, btn: b });
+              }
+
+              if (bubbleSelections.size > 0) {
+                submitBtn.style.display = 'inline-flex';
+                submitBtn.innerHTML = `✅ Submit (${bubbleSelections.size} selected) ➔`;
+              } else {
+                submitBtn.style.display = 'none';
+              }
+            };
+
+            buttonsWrap.appendChild(b);
+          });
+
+          optGroup.appendChild(submitBtn);
+          d.appendChild(optGroup);
+        }
+      }
+
+      $('chat').appendChild(d);
+      if (places && places.length > 0) {
+        setTimeout(() => d.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      } else {
+        $('chat').scrollTop = 1e9;
+      }
+      return d;
+    }
+
+    // MULTI-SELECT QUICK PILLS STATE & LOGIC
+    const selectedPills = new Map(); // group -> { val, label, el }
+
+    function togglePill(el) {
+      const group = el.dataset.group;
+      const val = el.dataset.val;
+
+      if (el.classList.contains('active')) {
+        el.classList.remove('active');
+        selectedPills.delete(group);
+      } else {
+        const prev = selectedPills.get(group);
+        if (prev && prev.el) {
+          prev.el.classList.remove('active');
+        }
+        el.classList.add('active');
+        selectedPills.set(group, { val, label: el.textContent.trim(), el });
+      }
+      updatePillUI();
+    }
+
+    function updatePillUI() {
+      const count = selectedPills.size;
+      const countBadge = $('pill-count-badge');
+      const clearBtn = $('btn-clear-pills');
+      const applyBtn = $('btn-apply-pills');
+
+      if (count > 0) {
+        countBadge.textContent = `${count} selected`;
+        countBadge.style.display = 'inline-block';
+        clearBtn.style.display = 'inline-block';
+        applyBtn.style.display = 'inline-flex';
+        applyBtn.innerHTML = `⚡ Search with ${count} selected ➔`;
+      } else {
+        countBadge.style.display = 'none';
+        clearBtn.style.display = 'none';
+        applyBtn.style.display = 'none';
+      }
+    }
+
+    function clearPills() {
+      selectedPills.forEach(item => {
+        if (item.el) item.el.classList.remove('active');
+      });
+      selectedPills.clear();
+      updatePillUI();
+    }
+
+    function getSelectedPillsText() {
+      return Array.from(selectedPills.values()).map(v => v.val).join(', ');
+    }
+
+    function applySelectedPills() {
+      const pillsText = getSelectedPillsText();
+      const inputVal = $('in').value.trim();
+      if (inputVal && pillsText) {
+        sendMsg(`${inputVal} (Preferences: ${pillsText})`);
+      } else if (pillsText) {
+        sendMsg(`My preferences: ${pillsText}`);
+      } else if (inputVal) {
+        sendMsg(inputVal);
+      }
+    }
+
+    // SEND MESSAGE
+    async function sendMsg(text) {
+      if (!text) return;
+      addMsg(text, 'user');
+      $('in').value = '';
+
+      const waitingEl = document.createElement('div');
+      waitingEl.className = 'msg bot';
+      waitingEl.innerHTML = `<span style="color: var(--text-muted); font-size: 13px;">Curating best spots</span> <div class="thinking-dots"><span></span><span></span><span></span></div>`;
+      $('chat').appendChild(waitingEl);
+      $('chat').scrollTop = 1e9;
+
+      try {
+        const payload = {
+          session: sid,
+          message: text,
+          ...(pos || {}),
+          ...(manualCity ? { city: manualCity } : {})
+        };
+        const r = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const d = await r.json();
+        waitingEl.remove();
+
+        if (d.error) {
+          addMsg(`⚠️ Error: ${d.error}`, 'bot');
+          return;
+        }
+
+        currentProfile = d.profile || {};
+
+        // Find dish map URL if present in trace
+        let dishMapUrl = '';
+        if (d.trace) {
+          for (let s of d.trace) {
+            if (s.tool === 'find_restaurants' && s.result) {
+              try {
+                const parsed = JSON.parse(s.result);
+                if (parsed.direct_dish_map) dishMapUrl = parsed.direct_dish_map;
+              } catch(e) {}
+            }
+          }
+        }
+
+        // Add assistant response with Google AI Mode Rich Cards
+        addMsg(d.reply, 'bot', currentProfile, d.places || [], dishMapUrl);
+
+        if (d.place) {
+          $('place').textContent = `📍 ${d.place.split(',').slice(0, 2).join(',')}`;
+          $('loc-dot').classList.add('live');
+        }
+
+        renderMemory(currentProfile);
+        renderTrace(d.trace || []);
+      } catch (err) {
+        waitingEl.remove();
+        addMsg('⚠️ Network error: Could not reach the FoodieAgent server.', 'bot');
+      }
+    }
+
+    // RENDER MEMORY
+    function renderMemory(profile) {
+      const keys = Object.keys(profile);
+      if (keys.length === 0) {
+        $('mem-container').innerHTML = `<div style="font-size: 12px; color: #94a3b8;">Profile memory is currently empty.</div>`;
+        return;
+      }
+      $('mem-container').innerHTML = keys.map(k => `
+        <div class="memory-badge">
+          <span class="mem-key">${k}:</span>
+          <span class="mem-val">${profile[k]}</span>
+        </div>
+      `).join('');
+    }
+
+    // RENDER TRACE
+    function renderTrace(trace) {
+      if (!trace || trace.length === 0) return;
+      $('trace-log').innerHTML = trace.map(s => `
+        <div class="trace-item">
+          <div><span class="trace-badge">${s.provider}</span> Step ${s.step}: <span class="trace-tool">${s.tool || 'Final Answer'}</span></div>
+          ${s.args ? `<div style="color: #475569; margin: 3px 0;">Args: ${JSON.stringify(s.args)}</div>` : ''}
+          ${s.result ? `<div style="color: #059669; word-break: break-all; margin-top: 3px;">Result: ${s.result}</div>` : ''}
+          ${s.errors && s.errors.length ? `<div style="color: #dc2626; margin-top: 3px;">⚠️ ${s.errors.join('; ')}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // EVENT LISTENERS WITH MULTI-PILL INTEGRATION
+    function handleSend() {
+      const inputVal = $('in').value.trim();
+      const pillsText = getSelectedPillsText();
+      if (inputVal && pillsText) {
+        sendMsg(`${inputVal} (Preferences: ${pillsText})`);
+      } else if (inputVal) {
+        sendMsg(inputVal);
+      } else if (pillsText) {
+        sendMsg(`My preferences: ${pillsText}`);
+      }
+    }
+
+    $('send').onclick = handleSend;
+    $('in').onkeydown = e => {
+      if (e.key === 'Enter') handleSend();
+    };
+
+    document.querySelectorAll('.quick-chips button').forEach(b => {
+      b.onclick = () => {
+        const text = b.dataset.text || b.textContent;
+        const pillsText = getSelectedPillsText();
+        if (pillsText) {
+          sendMsg(`${text} (Preferences: ${pillsText})`);
+        } else {
+          sendMsg(text);
+        }
+      };
+    });
+  </script>
+</body>
+</html>
