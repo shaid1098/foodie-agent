@@ -34,35 +34,55 @@ class FoodAgent:
         return SYSTEM + ctx + f"\nMemory (profile): {json.dumps(self.state['profile'])}"
 
     def chat(self, text, max_steps=6):
-        self.messages.append({"role": "user", "content": text})
+        # Clean conversation history: keep recent dialog turns without bloating with old raw JSON blobs
+        history = [m for m in self.messages[-12:] if m.get("role") in ("user", "assistant") and m.get("content")]
+        active_turn = [{"role": "user", "content": text}]
         trace = []
+
         for step in range(1, max_steps + 1):
-            window = self.messages[-30:]
-            while window and window[0]["role"] != "user": window = window[1:]   # never start on an orphan tool msg
-            provider, msg, errs = llm_call([{"role": "system", "content": self._context()}] + window, TOOLS)
+            # Send system prompt + recent dialog + active turn scratchpad
+            payload = [{"role": "system", "content": self._context()}] + history + active_turn
+            provider, msg, errs = llm_call(payload, TOOLS)
+            
             clean = {"role": "assistant", "content": msg.get("content") or ""}
-            if msg.get("tool_calls"): clean["tool_calls"] = msg["tool_calls"]
-            self.messages.append(clean)
+            if msg.get("tool_calls"):
+                clean["tool_calls"] = msg["tool_calls"]
+                
+            active_turn.append(clean)
+            
+            # If no tool calls, this is the final answer!
             if not msg.get("tool_calls"):
                 trace.append({"step": step, "provider": provider, "tool": None, "note": "final answer", "errors": errs})
+                # Commit this completed turn to permanent dialogue history
+                self.messages.append({"role": "user", "content": text})
+                self.messages.append({"role": "assistant", "content": clean["content"]})
                 return clean["content"], trace
+
+            # Execute tool calls
             for tc in msg["tool_calls"]:
                 name, raw = tc["function"]["name"], tc["function"].get("arguments") or "{}"
                 args = raw
                 try:
-                    args = json.loads(raw)
+                    args = json.loads(raw) if isinstance(raw, str) else raw
                     result = REGISTRY[name](self.state, **args)
-                except Exception as e:                                        # tool failure goes back to the LLM so it can recover
+                except Exception as e:
                     result = {"error": str(e)}
+                
                 trace.append({"step": step, "provider": provider, "tool": name, "args": args,
                               "result": json.dumps(result)[:400], "errors": errs})
-                self.messages.append({"role": "tool", "tool_call_id": tc["id"], "content": json.dumps(result)})
+                active_turn.append({"role": "tool", "tool_call_id": tc["id"], "content": json.dumps(result)})
         
-        # If max steps reached with tools, generate final response without tools
+        # If max steps reached, generate final summary
         try:
-            provider, msg, errs = llm_call([{"role": "system", "content": self._context() + "\nSummarize the recommendations found and provide the map links now."}] + self.messages[-10:], tools=[])
+            summary_payload = [{"role": "system", "content": self._context() + "\nSummarize the recommendations found and provide the map links now."}] + history + active_turn[-6:]
+            provider, msg, errs = llm_call(summary_payload, tools=[])
             final_content = msg.get("content") or "Here are the top nearby dining spots found for you!"
             trace.append({"step": max_steps + 1, "provider": provider, "tool": None, "note": "final summary", "errors": errs})
+            self.messages.append({"role": "user", "content": text})
+            self.messages.append({"role": "assistant", "content": final_content})
             return final_content, trace
         except Exception:
-            return "I have found the top places around your location! Check out the map links above.", trace
+            fallback = "I have found the top places around your location! Check out the map links above."
+            self.messages.append({"role": "user", "content": text})
+            self.messages.append({"role": "assistant", "content": fallback})
+            return fallback, trace
